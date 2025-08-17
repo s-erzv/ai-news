@@ -30,25 +30,16 @@ const App = () => {
   const fetchNews = async () => {
     setLoading(true);
     setError(null);
-    const NEWSAPI_URL = `https://newsapi.org/v2/everything?q=artificial+intelligence&apiKey=${import.meta.env.VITE_NEWSAPI_KEY}`;
     const GNEWS_URL = `https://gnews.io/api/v4/search?q=artificial+intelligence&lang=en&token=${import.meta.env.VITE_GNEWS_KEY}`;
     const NEWSDATA_URL = `https://newsdata.io/api/1/news?apikey=${import.meta.env.VITE_NEWSDATA_KEY}&q=artificial+intelligence&language=en`;
+    const GUARDIAN_URL = `https://content.guardianapis.com/search?q=artificial%20intelligence&api-key=${import.meta.env.VITE_GUARDIAN_KEY}&show-fields=bodyText,thumbnail`;
 
     try {
-      const [newsapiRes, gnewsRes, newsdataRes] = await Promise.all([
-        fetch(NEWSAPI_URL).then(res => res.json()),
-        fetch(GNEWS_URL).then(res => res.json()),
-        fetch(NEWSDATA_URL).then(res => res.json())
+      const [gnewsRes, newsdataRes, guardianRes] = await Promise.all([
+        fetch(GNEWS_URL).then(res => res.json()).catch(err => ({ articles: [] })),
+        fetch(NEWSDATA_URL).then(res => res.json()).catch(err => ({ results: [] })),
+        fetch(GUARDIAN_URL).then(res => res.json()).catch(err => ({ response: { results: [] } }))
       ]);
-
-      const newsapiArticles = (newsapiRes.articles || []).map(a => ({
-        source: { name: a.source?.name || "NewsAPI" },
-        title: a.title,
-        url: a.url,
-        publishedAt: a.publishedAt,
-        description: a.description,
-        urlToImage: a.urlToImage
-      }));
 
       const gnewsArticles = (gnewsRes.articles || []).map(a => ({
         source: { name: a.source?.name || "GNews" },
@@ -68,7 +59,16 @@ const App = () => {
         urlToImage: a.image_url
       }));
 
-      const combinedNews = [...newsapiArticles, ...gnewsArticles, ...newsdataArticles]
+      const guardianArticles = (guardianRes.response?.results || []).map(a => ({
+        source: { name: "The Guardian" },
+        title: a.webTitle,
+        url: a.webUrl,
+        publishedAt: a.webPublicationDate,
+        description: a.fields?.bodyText || a.webTitle,
+        urlToImage: a.fields?.thumbnail
+      }));
+
+      const combinedNews = [...gnewsArticles, ...newsdataArticles, ...guardianArticles]
         .filter(article => article.title && article.url && article.urlToImage)
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 
@@ -114,55 +114,57 @@ const App = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-800 text-gray-100 font-sans">
-
+      
+      {/* Hero Header */}
       <header className="relative overflow-hidden mb-12 min-h-[50vh] md:min-h-screen flex flex-col items-start justify-center text-left px-4 md:items-center md:justify-center md:text-center">
-        <div className="absolute inset-0 z-0">
-          <LightRays
-            raysOrigin="top-center"
-            raysColor="#00ffff"
-            raysSpeed={1.5}
-            lightSpread={0.8}
-            rayLength={1.2}
-            followMouse={true}
-            mouseInfluence={0.1}
-            noiseAmount={0.1}
-            distortion={0.05}
+      <div className="absolute inset-0 z-0">
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#00ffff"
+          raysSpeed={1.5}
+          lightSpread={0.8}
+          rayLength={1.2}
+          followMouse={true}
+          mouseInfluence={0.1}
+          noiseAmount={0.1}
+          distortion={0.05}
+        />
+      </div>
+      <div className="relative z-10 w-full max-w-xl lg:max-w-3xl mx-auto py-12">
+        <h1 className="text-8xl sm:text-8xl lg:text-8xl font-bold text-white mb-4">
+          Digital <span className="text-cyan-300">Hero</span>
+        </h1>
+        <p className="text-blue-200 text-lg sm:text-xl mb-8 leading-relaxed">
+          Temukan berita terdepan tentang kecerdasan buatan dari berbagai sumber tepercaya
+        </p>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Cari berita..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            className="w-full h-14 pl-14 pr-6 rounded-full bg-white bg-opacity-95 text-gray-800 placeholder-gray-500 shadow-2xl border-0 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:bg-opacity-100 transition-all duration-300 text-lg"
           />
-        </div>
-        <div className="relative z-10 w-full max-w-xl lg:max-w-3xl mx-auto py-12">
-          <h1 className="text-8xl sm:text-8xl lg:text-8xl font-bold text-white mb-4">
-            Digital <span className="text-cyan-300">Hero</span>
-          </h1>
-          <p className="text-blue-200 text-lg sm:text-xl mb-8 leading-relaxed">
-            Temukan berita terdepan tentang kecerdasan buatan dari berbagai sumber tepercaya
-          </p>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Cari berita..."
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full h-14 pl-14 pr-6 rounded-full bg-white bg-opacity-95 text-gray-800 placeholder-gray-500 shadow-2xl border-0 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:bg-opacity-100 transition-all duration-300 text-lg"
-            />
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
-              <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-              </svg>
-            </div>
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-              </button>
-            )}
+          <div className="absolute left-4 top-1/2 transform -translate-y-1/2">
+            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
           </div>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          )}
         </div>
-      </header>
+      </div>
+    </header>
 
+      {/* Main Content */}
       <main className="container mx-auto px-4 md:px-0">
         {loading && (
           <div className="flex flex-col items-center justify-center py-20">
@@ -208,6 +210,7 @@ const App = () => {
 
         {!loading && !error && (
           <>
+            {/* Bento Grid Layout (Featured & Secondary) */}
             {!showMore && bentoArticles.length > 0 && (
               <section className="mb-12">
                 <h2 className="text-2xl font-bold text-slate-100 mb-6 border-b border-slate-700 pb-2">Berita Teratas</h2>
